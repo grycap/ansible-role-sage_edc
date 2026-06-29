@@ -66,6 +66,8 @@
             KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
           volumes:
             - ./init.sh:/tmp/init.sh
+          entrypoint: ["sh", "/tmp/init.sh"]
+          restart: "no"
 
 - name: Apply custom identity docker-compose patch
   copy:
