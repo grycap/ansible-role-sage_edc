@@ -4,12 +4,6 @@
 
 - include_tasks: generate_env.yaml
 
-- name: make init
-  command: make init
-  args:
-    chdir: /opt/edc/deployment/instruction/docker
-    creates: /opt/edc/deployment/instruction/docker/.env
-
 - name: Create secrets directory
   file:
     path: /opt/edc/deployment/instruction/docker/.secrets
