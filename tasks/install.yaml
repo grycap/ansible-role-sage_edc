@@ -1,0 +1,45 @@
+- name: install epel-release
+  package:
+    name: epel-release
+  when: ansible_os_family == 'RedHat'
+
+- name: Install pip, make and openssl packages on Debian/RedHat
+  package:
+    name:
+      - make
+      - openssl
+      - python3-pip
+    state: present
+
+- name: Install htpasswd package on Debian/RedHat
+  package:
+    name:
+      - "{{ 'apache2-utils' if ansible_os_family == 'Debian' else 'httpd-tools' }}"
+      - "{{ 'python3-venv' if ansible_os_family == 'Debian' else 'python3-virtualenv' }}"
+    state: present
+
+- name: check if EDC files are already downloaded
+  stat:
+    path: /opt/edc/deployment/instruction/docker
+  register: env_file_stat
+
+- name: Download EDC files
+  git:
+    repo: 'https://gitlab.pcss.pl/daisd-public/dpi-pipelines/psnc-edc-mvds/psnc-edc-mvds'
+    dest: /opt/edc/
+    version: "{{ branch }}"
+  when: not env_file_stat.stat.exists
+
+- name: Fix permissions for some scripts
+  file:
+    path: "/opt/edc/deployment/instruction/docker/scripts/{{ item }}"
+    mode: '0755'
+  loop:
+    - vault-init-unseal.sh
+    - render/render-dashboard.sh
+
+- name: Replace connector_public.pem with consumer_public.pem
+  replace:
+    path: /opt/edc/deployment/instruction/docker/scripts/configure/render-dataspace-config.sh
+    regexp: 'connector_public.pem'
+    replace: 'consumer_public.pem'

@@ -1,0 +1,128 @@
+- include_tasks: verify.yaml
+
+- include_tasks: install.yaml
+
+- include_tasks: generate_env.yaml
+
+- name: make init
+  command: make init
+  args:
+    chdir: /opt/edc/deployment/instruction/docker
+    creates: /opt/edc/deployment/instruction/docker/.env
+
+- name: Create secrets directory
+  file:
+    path: /opt/edc/deployment/instruction/docker/.secrets
+    state: directory
+    mode: '0777'
+
+- include_tasks: custom_identity.yaml
+  when:
+    - "'keycloak' in compose_profiles_list"
+    - use_custom_identity_provider_image
+
+- name: make render
+  command: make render
+  args:
+    chdir: /opt/edc/deployment/instruction/docker
+    creates: /opt/edc/deployment/instruction/docker/.generated/config/connector.properties
+
+- name: Prepare ACME file for TLS certificates
+  file:
+    path: /opt/edc/deployment/instruction/docker/acme.json
+    mode: '0600'
+
+- name: Check if vault-init is needed
+  command: grep VAULT_ROOT_TOKEN=hvs /opt/edc/deployment/instruction/docker/.env.secrets
+  register: vault_init_check
+  failed_when: false
+  changed_when: false
+
+- name: make vault-init
+  command: make vault-init
+  args:
+    chdir: /opt/edc/deployment/instruction/docker
+  when:
+    - "'identity' in compose_profiles_list"
+    - vault_init_check.rc != 0
+
+- name: make up
+  command: make up
+  args:
+    chdir: /opt/edc/deployment/instruction/docker
+
+- name: Set extra_args var
+  set_fact:
+    extra_args: ''
+
+- name: Set extra_args var in py3.11
+  set_fact:
+    extra_args: --break-system-packages
+  when: ansible_python_version is version('3.11', '>=')
+
+- name: Install pip required packages
+  pip:
+    name:
+      - virtualenv
+    executable: pip3
+    extra_args: "{{ extra_args }}"
+
+- name: Install python dependencies
+  pip:
+    requirements: /opt/edc/deployment/instruction/docker/scripts/keycloak/requirements.txt
+    extra_args: "{{ extra_args }}"
+
+- name: Create virtualenv
+  command:
+    cmd: python -m virtualenv --system-site-packages /opt/edc/deployment/instruction/docker/venv
+    creates: /opt/edc/deployment/instruction/docker/venv
+
+- name: Wait for Keycloak endpoint to be active
+  uri:
+    url: "{{ keycloak_address }}/realms/master/.well-known/openid-configuration"
+    method: GET
+    status_code: 200
+    validate_certs: false
+  register: keycloak_health
+  until: keycloak_health.status == 200
+  retries: 30
+  delay: 10
+  when:
+    - "'keycloak' in compose_profiles_list"
+
+- name: make configure-keycloak-full
+  shell: make configure-keycloak-full && touch /opt/edc/deployment/instruction/docker/.keycloak_configured
+  args:
+    chdir: /opt/edc/deployment/instruction/docker
+    creates: /opt/edc/deployment/instruction/docker/.keycloak_configured
+  when:
+    - "'keycloak' in compose_profiles_list"
+
+- name: make init-identity-hub
+  shell: make init-identity-hub && touch /opt/edc/deployment/instruction/docker/.identity_hub_initialized
+  args:
+    chdir: /opt/edc/deployment/instruction/docker
+    creates: /opt/edc/deployment/instruction/docker/.identity_hub_initialized
+
+#    - name: make verify-identity-hub
+#      command: make verify-identity-hub
+#      args:
+#        chdir: /opt/edc/deployment/instruction/docker
+
+- name: Read .env file
+  slurp: src=/opt/edc/deployment/instruction/docker/.env
+  register: slurpfile
+  ignore_errors: true
+
+- name: env_file
+  debug: msg="{{ slurpfile['content'] | b64decode }}"
+  ignore_errors: true
+
+- name: onboarding_file
+  debug:
+    msg: |
+      DSP_URL = https://connector.{{ domain_name }}/API/dsp
+      DID = did:web:{{ identity_hub_address}}:{{ connector_id }}
+      IDENTITY_HUB_URL = {{ identity_hub_address }}/api/identity
+      API_KEY = {{ (identity_hub_superuser_username | default('super-user') | b64encode) ~ '.' ~ (lookup('ansible.builtin.file', '/opt/edc/deployment/instruction/docker/.secrets/IDENTITY_HUB_SUPERUSER_SECRET') | trim | b64encode) }}
+  ignore_errors: true

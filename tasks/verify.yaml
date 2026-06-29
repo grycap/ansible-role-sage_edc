@@ -1,0 +1,54 @@
+- name: Validate required DID and dataspace variables
+  assert:
+    that:
+      - issuer_did is defined
+      - federated_catalog_address is defined
+      - dataspace_hub_url is defined
+      - connector_id is defined
+      - catalog_api_key is defined
+    fail_msg: >-
+      Missing required variables. You must define issuer_did,
+      federated_catalog_address, connector_id, dataspace_hub_url and catalog_api_key.
+
+- name: Normalize compose profiles
+  set_fact:
+    compose_profiles_list: >-
+      {{ (compose_profiles | default('connector')).split(',')
+          | map('trim')
+          | reject('equalto', '')
+          | map('lower')
+          | unique
+          | list }}
+
+- name: Validate compose profiles values
+  assert:
+    that:
+      - "'connector' in compose_profiles_list"
+      - (compose_profiles_list | difference(['connector', 'keycloak', 'identity', 'storage']) | length) == 0
+    fail_msg: >-
+      Invalid COMPOSE_PROFILES. Allowed profiles are: connector (mandatory),
+      keycloak, identity, storage.
+
+- name: Validate external addresses for disabled profiles
+  assert:
+    that:
+      - "'keycloak' in compose_profiles_list or keycloak_address is defined"
+      - "'identity' in compose_profiles_list or identity_hub_address is defined"
+      - "'identity' in compose_profiles_list or vault_address is defined"
+    fail_msg: >-
+      Missing required variables for disabled profiles. If keycloak profile is not enabled,
+      define keycloak_address. If identity profile is not enabled, define
+      identity_hub_address and vault_address.
+
+- name: Set default values for keycloak_address when keycloak profile is enabled
+  set_fact:
+    keycloak_address: "https://keycloak.{{ domain_name }}"
+  when:
+    - "'keycloak' in compose_profiles_list"
+
+- name: Set default values for identity_hub_address and vault_address when identity profile is enabled
+  set_fact:
+    identity_hub_address: "https://identity-hub.{{ domain_name }}"
+    vault_address: "https://vault.{{ domain_name }}"
+  when:
+    - "'identity' in compose_profiles_list"

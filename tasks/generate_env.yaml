@@ -1,0 +1,108 @@
+- name: Generate passwords in .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^{{ item }}='
+    line: "{{ item }}={{ lookup('ansible.builtin.password', '/opt/edc/deployment/instruction/docker/.secrets/' ~ item ~ ' length=32') }}"
+  loop: "{{ password_env_vars }}"
+
+- name: Generate random password for dashboard if not set
+  set_fact:
+    dashboard_password: "{{ lookup('ansible.builtin.password', '/opt/edc/deployment/instruction/docker/.secrets/dashboard_password length=8') }}"
+  when: dashboard_password is not defined or dashboard_password == ''
+
+- name: dashboard_username
+  debug: msg="{{ dashboard_username | default("test") }}"
+
+- name: dashboard_password
+  debug: msg="{{ dashboard_password }}"
+
+- name: Update hosts variables in .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^{{ item.env_key }}='
+    line: "{{ item.env_key }}={{ item.value }}"
+  loop:
+    - { env_key: 'CONNECTOR_HOST', value: 'connector.{{ domain_name }}' }
+    - { env_key: 'DASHBOARD_HOST', value: 'dashboard.{{ domain_name }}' }
+    - { env_key: 'KEYCLOAK_HOST', value: 'keycloak.{{ domain_name }}' }
+    - { env_key: 'TRAEFIK_DASHBOARD_HOST', value: 'traefik.{{ domain_name }}' }
+    - { env_key: 'IDENTITY_HUB_HOST', value: 'identity-hub.{{ domain_name }}' }
+    - { env_key: 'VAULT_HOST', value: 'vault.{{ domain_name }}' }
+    - { env_key: 'CONSUMER_BACKEND_HOST', value: 'consumer-backend.{{ domain_name }}' }
+    - { env_key: 'STORAGE_HOST', value: 'storage.{{ domain_name }}' }
+    - { env_key: 'DASHBOARD_USER_NAME', value: '{{ dashboard_username | default("test") }}' }
+    - { env_key: 'DASHBOARD_USER_PASS', value: '{{ dashboard_password }}' }
+
+- name: Update CATALOG_API_KEY in .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^CATALOG_API_KEY='
+    line: "CATALOG_API_KEY={{ catalog_api_key }}"
+
+- name: Update LETSENCRYPT_EMAIL in .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^LETSENCRYPT_EMAIL='
+    line: "LETSENCRYPT_EMAIL={{ letsencrypt_email }}"
+
+- name: Generate IDENTITY_HUB_SUPERUSER_SECRET
+  shell: openssl rand -base64 32 | tr -d '\r\n' > /opt/edc/deployment/instruction/docker/.secrets/IDENTITY_HUB_SUPERUSER_SECRET
+  args:
+    creates: /opt/edc/deployment/instruction/docker/.secrets/IDENTITY_HUB_SUPERUSER_SECRET
+
+- name: Update IDENTITY_HUB_SUPERUSER_KEY in .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^IDENTITY_HUB_SUPERUSER_KEY='
+    line: >-
+      IDENTITY_HUB_SUPERUSER_KEY={{ (identity_hub_superuser_username | default('super-user') | b64encode) ~ '.' ~ (lookup('ansible.builtin.file', '/opt/edc/deployment/instruction/docker/.secrets/IDENTITY_HUB_SUPERUSER_SECRET') | trim | b64encode) }}
+
+- name: check if TRAEFIK_PASS file exists
+  stat:
+    path: /opt/edc/deployment/instruction/docker/.secrets/TRAEFIK_PASS
+  register: traefik_pass_file
+
+- name: Generate temporary TRAEFIK_PASS
+  set_fact:
+    traefik_pass: "{{ lookup('ansible.builtin.password', '/opt/edc/deployment/instruction/docker/.secrets/TRAEFIK_PASS length=20 chars=ascii_letters,digits') }}"
+
+- name: Generate TRAEFIK_BASIC_AUTH value
+  command: htpasswd -nb admin {{ traefik_pass }}
+  register: traefik_basic_auth_cmd
+  changed_when: false
+  when: not traefik_pass_file.stat.exists
+
+- name: Update TRAEFIK_BASIC_AUTH in .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^TRAEFIK_BASIC_AUTH='
+    line: "TRAEFIK_BASIC_AUTH={{ traefik_basic_auth_cmd.stdout | regex_replace('\\$', '$$') }}"
+  when: not traefik_pass_file.stat.exists
+
+- name: Update COMPOSE_PROFILES in .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^COMPOSE_PROFILES='
+    line: COMPOSE_PROFILES={{ compose_profiles_list | join(',') }}
+
+- name: Update DID and dataspace variables in .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^{{ item.env_key }}='
+    line: "{{ item.env_key }}={{ vars[item.ansible_var] }}"
+  loop:
+    - { env_key: 'ISSUER_DID', ansible_var: 'issuer_did' }
+    - { env_key: 'FEDERATED_CATALOG_ADDRESS', ansible_var: 'federated_catalog_address' }
+    - { env_key: 'DATASPACE_HUB_URL', ansible_var: 'dataspace_hub_url' }
+    - { env_key: 'CONNECTOR_ID', ansible_var: 'connector_id' }
+
+- name: Update external addresses in .env when defined
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^{{ item.env_key }}='
+    line: "{{ item.env_key }}={{ vars[item.var_name] }}"
+  loop:
+    - { env_key: 'KEYCLOAK_ADDRESS', var_name: 'keycloak_address'}
+    - { env_key: 'IDENTITY_HUB_ADDRESS', var_name: 'identity_hub_address'}
+    - { env_key: 'VAULT_ADDRESS', var_name: 'vault_address'}
+  when: item.var_name in vars

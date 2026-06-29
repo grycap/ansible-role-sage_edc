@@ -1,0 +1,74 @@
+- name: Copy init.sh script to the docker directory
+  copy:
+    src: init.sh
+    dest: /opt/edc/deployment/instruction/docker/init.sh
+
+- name: Create realms directory
+  file:
+    path: /opt/edc/deployment/instruction/docker/realms
+    state: directory
+    mode: '0755'
+
+- name: Copy realm.json file to the docker directory
+  copy:
+    src: realm.json
+    dest: /opt/edc/deployment/instruction/docker/realms/realm.json
+
+- name: Create keys directory
+  file:
+    path: /opt/edc/deployment/instruction/docker/keys
+    state: directory
+    mode: '0755'
+
+- name: Create CA file
+  copy:
+    content: "{{ identity_provider_ca_file }}"
+    dest: /opt/edc/deployment/instruction/docker/keys/ca-file.pem
+
+- name: Create ishare.json file from template
+  template:
+    src: ishare.json.j2
+    dest: /opt/edc/deployment/instruction/docker/ishare.json
+
+- name: Read docker-compose.yml
+  slurp:
+    src: /opt/edc/deployment/instruction/docker/docker-compose.yml
+  register: docker_compose_file
+
+- name: Parse docker-compose.yml
+  set_fact:
+    docker_compose_content: "{{ docker_compose_file.content | b64decode | from_yaml }}"
+
+- name: Build identity-provider docker-compose patch
+  set_fact:
+    custom_identity_compose_patch:
+      services:
+        keycloak:
+          image: "{{ identity_provider_image }}"
+          command:
+            - start
+            - --import-realm
+          volumes:
+            - ./realms:/opt/keycloak/data/import
+            - ./keys:/opt/keycloak-keys/sage-participant
+            - ./ishare.json:/opt/keycloak/conf/ishare.json
+        keycloak-db:
+          image: "{{ identity_provider_db_image }}"
+        run-entitlements:
+          image: "{{ identity_provider_image }}"
+          container_name: local-run-entitlements
+          depends_on:
+            - keycloak
+          environment:
+            KC_DB: postgres
+            KC_DB_URL: jdbc:postgresql://keycloak-db:5432/postgres2
+            KC_DB_USERNAME: ${KEYCLOAK_DB_USER}
+            KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+          volumes:
+            - ./init.sh:/tmp/init.sh
+
+- name: Apply custom identity docker-compose patch
+  copy:
+    dest: /opt/edc/deployment/instruction/docker/docker-compose.yml
+    content: "{{ docker_compose_content | combine(custom_identity_compose_patch, recursive=true) | to_nice_yaml(indent=2, sort_keys=false) }}"
+  when: custom_identity_compose_patch is defined
