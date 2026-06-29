@@ -1,6 +1,6 @@
 #!/bin/sh
 
-REALM_LIST="sage-participant"
+REALM_LIST="sage"
 
 # --- Dynamic Keycloak Readiness Check ---
 echo "Waiting for Keycloak to become ready..."
@@ -48,7 +48,7 @@ for REALM_NAME in $REALM_LIST; do
 
   # --- can select different namespaces ---
   case "$REALM_NAME" in
-    sage-participant)
+    sage)
       URN_NAMESPACE="urn:rciam.example.org"
       ;;
     another)

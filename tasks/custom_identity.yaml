@@ -50,7 +50,7 @@
             - --import-realm
           volumes:
             - ./realms:/opt/keycloak/data/import
-            - ./keys:/opt/keycloak-keys/sage-participant
+            - ./keys:/opt/keycloak-keys/sage
             - ./ishare.json:/opt/keycloak/conf/ishare.json
         keycloak-db:
           image: "{{ identity_provider_db_image }}"
