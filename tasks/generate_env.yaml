@@ -4,6 +4,12 @@
     chdir: /opt/edc/deployment/instruction/docker
     creates: /opt/edc/deployment/instruction/docker/.env
 
+- name: Create secrets directory
+  file:
+    path: /opt/edc/deployment/instruction/docker/.secrets
+    state: directory
+    mode: '0777'
+
 - name: Generate passwords in .env
   lineinfile:
     path: /opt/edc/deployment/instruction/docker/.env

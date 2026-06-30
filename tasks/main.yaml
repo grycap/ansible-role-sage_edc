@@ -4,12 +4,6 @@
 
 - include_tasks: generate_env.yaml
 
-- name: Create secrets directory
-  file:
-    path: /opt/edc/deployment/instruction/docker/.secrets
-    state: directory
-    mode: '0777'
-
 - include_tasks: custom_identity.yaml
   when:
     - "'keycloak' in compose_profiles_list"
