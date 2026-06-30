@@ -32,7 +32,7 @@
 
 - name: Read docker-compose.yml
   slurp:
-    src: /opt/edc/deployment/instruction/docker/docker-compose.yml
+    src: /opt/edc/deployment/instruction/docker/docker-compose.yaml
   register: docker_compose_file
 
 - name: Parse docker-compose.yml
@@ -55,6 +55,8 @@
         keycloak-db:
           image: "{{ identity_provider_db_image }}"
         run-entitlements:
+          profiles:
+          - keycloak
           image: "{{ identity_provider_image }}"
           container_name: local-run-entitlements
           depends_on:
@@ -71,6 +73,6 @@
 
 - name: Apply custom identity docker-compose patch
   copy:
-    dest: /opt/edc/deployment/instruction/docker/docker-compose.yml
+    dest: /opt/edc/deployment/instruction/docker/docker-compose.yaml
     content: "{{ docker_compose_content | combine(custom_identity_compose_patch, recursive=true) | to_nice_yaml(indent=2, sort_keys=false) }}"
   when: custom_identity_compose_patch is defined
