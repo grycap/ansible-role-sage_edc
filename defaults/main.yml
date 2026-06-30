@@ -1,5 +1,5 @@
 branch: develop
-dns_name: 'example.com'
+domain_name: 'example.com'
 password_env_vars:
   - COMMON_DB_PASSWORD
   - CONNECTOR_DB_PASSWORD
