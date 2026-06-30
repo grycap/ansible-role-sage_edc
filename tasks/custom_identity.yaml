@@ -48,6 +48,8 @@
           command:
             - start
             - --import-realm
+          environment:
+            KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB_NAME}
           volumes:
             - ./realms:/opt/keycloak/data/import
             - ./keys:/opt/keycloak-keys/sage
@@ -63,7 +65,7 @@
             - keycloak
           environment:
             KC_DB: postgres
-            KC_DB_URL: jdbc:postgresql://keycloak-db:5432/postgres2
+            KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB_NAME}
             KC_DB_USERNAME: ${KEYCLOAK_DB_USER}
             KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
           volumes:
