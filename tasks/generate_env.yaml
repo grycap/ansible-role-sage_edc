@@ -51,6 +51,13 @@
     regexp: '^CATALOG_API_KEY='
     line: "CATALOG_API_KEY={{ catalog_api_key }}"
 
+- name: Update REALM_NAME in .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^REALM_NAME='
+    line: "REALM_NAME={{ realm_name }}"
+  when: use_custom_identity_provider_image and realm_name != ''
+
 - name: Update LETSENCRYPT_EMAIL in .env
   lineinfile:
     path: /opt/edc/deployment/instruction/docker/.env

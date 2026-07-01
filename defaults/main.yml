@@ -9,3 +9,4 @@ password_env_vars:
   - STORAGE_SECRET_KEY
   - CONNECTOR_STS_CLIENT_SECRET_ALIAS
 use_custom_identity_provider_image: false
+realm_name: 'sage'
