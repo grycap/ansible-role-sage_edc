@@ -43,3 +43,9 @@
     path: /opt/edc/deployment/instruction/docker/scripts/configure/render-dataspace-config.sh
     regexp: 'connector_public.pem'
     replace: 'consumer_public.pem'
+
+- name: Replace /realms/Organizations with /realms/${REALM_NAME}
+  replace:
+    path: /opt/edc/deployment/instruction/docker/scripts/render/render-dashboard.sh
+    regexp: '/realms/Organizations'
+    replace: '/realms/${REALM_NAME}'
