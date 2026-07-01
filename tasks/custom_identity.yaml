@@ -50,6 +50,8 @@
             - --import-realm
           environment:
             KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB_NAME}
+            KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+            KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER}
           volumes:
             - ./realms:/opt/keycloak/data/import
             - ./keys:/opt/keycloak-keys/sage
