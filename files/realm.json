@@ -3353,7 +3353,6 @@
   "organizationsEnabled" : false,
   "verifiableCredentialsEnabled" : false,
   "adminPermissionsEnabled" : false,
-  "scimEnabled" : false,
   "clientProfiles" : {
     "profiles" : [ ]
   },
