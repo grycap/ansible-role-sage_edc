@@ -13,7 +13,6 @@
   command: make render
   args:
     chdir: /opt/edc/deployment/instruction/docker
-    creates: /opt/edc/deployment/instruction/docker/.generated/config/connector.properties
 
 - name: Prepare ACME file for TLS certificates
   file:
