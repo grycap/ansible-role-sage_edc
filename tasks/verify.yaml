@@ -6,9 +6,12 @@
       - dataspace_hub_url is defined
       - connector_id is defined
       - catalog_api_key is defined
+      - ishare_client_id is defined
+      - ishare_pr_iss is defined
     fail_msg: >-
       Missing required variables. You must define issuer_did,
-      federated_catalog_address, connector_id, dataspace_hub_url and catalog_api_key.
+      federated_catalog_address, connector_id, dataspace_hub_url, catalog_api_key,
+      ishare_client_id and ishare_pr_iss.
 
 - name: Normalize compose profiles
   set_fact:
