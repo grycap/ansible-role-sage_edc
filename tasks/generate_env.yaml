@@ -19,7 +19,7 @@
 
 - name: Generate random password for dashboard if not set
   set_fact:
-    dashboard_password: "{{ lookup('ansible.builtin.password', '/opt/edc/deployment/instruction/docker/.secrets/dashboard_password length=8') }}"
+    dashboard_password: "{{ lookup('ansible.builtin.password', '/opt/edc/deployment/instruction/docker/.secrets/dashboard_password length=16') }}"
   when: dashboard_password is not defined or dashboard_password == ''
 
 - name: dashboard_username

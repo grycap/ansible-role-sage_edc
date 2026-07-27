@@ -44,8 +44,12 @@
     regexp: 'connector_public.pem'
     replace: 'consumer_public.pem'
 
-- name: Replace /realms/Organizations with /realms/${REALM_NAME}
+- name: Replace /realms/Organizations with /realms/{{ realm_name }}
   replace:
-    path: /opt/edc/deployment/instruction/docker/scripts/render/render-dashboard.sh
+    path: /opt/edc/deployment/instruction/docker/{{ item }}
     regexp: '/realms/Organizations'
-    replace: '/realms/${REALM_NAME}'
+    replace: '/realms/{{ realm_name }}'
+  when: use_custom_identity_provider_image
+  loop:
+    - scripts/render/render-dashboard.sh
+    - config/templates/connector.properties.template
