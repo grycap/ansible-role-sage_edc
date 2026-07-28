@@ -38,6 +38,12 @@
   args:
     chdir: /opt/edc/deployment/instruction/docker
 
+- name: restart connector
+  command: docker restart docker-connector-1
+  args:
+    chdir: /opt/edc/deployment/instruction/docker
+  when: ishare_client_id_lineinfile is changed
+
 - name: Set extra_args var
   set_fact:
     extra_args: ''

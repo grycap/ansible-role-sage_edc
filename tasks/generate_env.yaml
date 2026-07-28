@@ -61,8 +61,14 @@
     - { env_key: 'ISHARE_VAULT_KEY_SECRET', value: 'ishare-private-key' }
     - { env_key: 'ISHARE_VAULT_CERT_SECRET', value: 'ishare-certificate-chain' }
     - { env_key: 'ISHARE_GUARD_ALLOWED_IDS', value: '"did:web:federated-catalog-identity-hub-sage-data-space.apps.bst2.paas.psnc.pl:authority"' }
-    - { env_key: 'ISHARE_CLIENT_ID', value: '{{ ishare_client_id }}' }
     - { env_key: 'ISHARE_PR_ISS', value: '{{ ishare_pr_iss }}' }
+
+- name: Update ISHARE_CLIENT_ID in .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^ISHARE_CLIENT_ID='
+    line: "ISHARE_CLIENT_ID={{ ishare_client_id }}"
+  register: ishare_client_id_lineinfile
 
 - name: Update CATALOG_API_KEY in .env
   lineinfile:
