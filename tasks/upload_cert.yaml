@@ -3,6 +3,14 @@
     content: "{{ sage_tls_cert }}"
     dest: /opt/edc/deployment/instruction/docker/keys/sage.p12
     mode: '0600'
+  when: not sage_tls_cert | regex_search('^ott://')
+
+- name: Download TLS certificate from URL
+  get_url:
+    url: "{{ sage_tls_cert | regex_replace('^ott://', 'https://') }}"
+    dest: /opt/edc/deployment/instruction/docker/keys/sage.p12
+    mode: '0600'
+  when: sage_tls_cert | regex_search('^ott://')
 
 - when:
     - "'identity' in compose_profiles_list"
