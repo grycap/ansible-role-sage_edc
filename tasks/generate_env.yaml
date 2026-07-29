@@ -45,6 +45,31 @@
     - { env_key: 'DASHBOARD_USER_NAME', value: '{{ dashboard_username | default("test") }}' }
     - { env_key: 'DASHBOARD_USER_PASS', value: '{{ dashboard_password }}' }
 
+- name: Update ISHARE variables in .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^{{ item.env_key }}='
+    line: "{{ item.env_key }}={{ item.value }}"
+  loop:
+    - { env_key: 'IMAGE_TAG', value: 'sage-latest' }
+    - { env_key: 'ISHARE_AUTO_INIT', value: 'true' }
+    - { env_key: 'ISHARE_PR_URL', value: 'https://pr-middleware.62.3.175.232.nip.io' }
+    - { env_key: 'ISHARE_PR_AUD', value: 'did:ishare:EU.NL.NTRPL-12345678' }
+    - { env_key: 'ISHARE_GUARD_ENABLED', value: 'true' }
+    - { env_key: 'ISHARE_GUARD_MODE', value: 'audit' }
+    - { env_key: 'ISHARE_GUARD_DATASPACE_ID', value: 'EU.DS.GND.SAGE' }
+    - { env_key: 'ISHARE_VAULT_KEY_SECRET', value: 'ishare-private-key' }
+    - { env_key: 'ISHARE_VAULT_CERT_SECRET', value: 'ishare-certificate-chain' }
+    - { env_key: 'ISHARE_GUARD_ALLOWED_IDS', value: '"did:web:federated-catalog-identity-hub-sage-data-space.apps.bst2.paas.psnc.pl:authority"' }
+    - { env_key: 'ISHARE_PR_ISS', value: '{{ ishare_pr_iss }}' }
+
+- name: Update ISHARE_CLIENT_ID in .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^ISHARE_CLIENT_ID='
+    line: "ISHARE_CLIENT_ID={{ ishare_client_id }}"
+  register: ishare_client_id_lineinfile
+
 - name: Update CATALOG_API_KEY in .env
   lineinfile:
     path: /opt/edc/deployment/instruction/docker/.env
