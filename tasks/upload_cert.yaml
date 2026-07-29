@@ -1,0 +1,77 @@
+- name: Copy TLS certificate to /opt/edc/deployment/instruction/docker/keys/sage.p12
+  copy:
+    content: "{{ sage_tls_cert }}"
+    dest: /opt/edc/deployment/instruction/docker/keys/sage.p12
+    mode: '0600'
+  when: (sage_tls_cert | regex_search('^ott://')) is none
+
+- name: Check whether the downloaded TLS certificate already exists
+  ansible.builtin.stat:
+    path: /opt/edc/deployment/instruction/docker/keys/sage.p12
+  register: sage_tls_cert_file
+  when: (sage_tls_cert | regex_search('^ott://')) is not none
+
+- name: Download TLS certificate from URL
+  ansible.builtin.get_url:
+    url: "{{ sage_tls_cert | regex_replace('^ott://', 'https://') }}"
+    dest: /opt/edc/deployment/instruction/docker/keys/sage.p12
+    mode: '0600'
+  when:
+    - (sage_tls_cert | regex_search('^ott://')) is not none
+    - not sage_tls_cert_file.stat.exists
+
+- when:
+    - "'identity' in compose_profiles_list"
+    - sage_tls_cert_password is defined and sage_tls_cert_password != ''
+  block:
+
+    - name: Generate combined.pem from sage.p12
+      command: >
+        openssl pkcs12 -in /opt/edc/deployment/instruction/docker/keys/sage.p12 -out /opt/edc/bin/key-tools/combined.pem -nodes -legacy -password pass:{{ sage_tls_cert_password }}
+      args:
+        creates: /opt/edc/bin/key-tools/combined.pem
+
+    - name: Install pip required packages for upload_private_key_to_vault.py
+      pip:
+        requirements: /opt/edc/bin/key-tools/requirements.txt
+        extra_args: --break-system-packages
+
+    - name: Read Vault secrets file
+      slurp:
+        src: /opt/edc/deployment/instruction/docker/.env.secrets
+      register: vault_secrets_file
+      no_log: true
+
+    - name: Extract Vault token
+      set_fact:
+        vault_token: >-
+          {{
+            (
+              vault_secrets_file.content
+              | b64decode
+              | regex_findall('(?m)^VAULT_ROOT_TOKEN=(.*)$')
+              | first
+            )
+            | default('', true)
+            | trim
+          }}
+      no_log: true
+
+    - name: Validate Vault token
+      assert:
+        that:
+          - vault_token | length > 0
+        fail_msg: VAULT_ROOT_TOKEN is missing or empty in .env.secrets
+      no_log: true
+
+    - name: Upload TLS certificates to Vault
+      shell:
+        chdir: /opt/edc/bin/key-tools
+        cmd: >
+          pip install --break-system-packages -r requirements.txt &&
+          ./upload_private_key_to_vault.py --combined-file combined.pem --mount-point secret &&
+          touch /opt/edc/deployment/instruction/docker/.tls_cert_uploaded
+        creates: /opt/edc/deployment/instruction/docker/.tls_cert_uploaded
+      environment:
+        VAULT_TOKEN: "{{ vault_token }}"
+        VAULT_ADDR: "{{ vault_address }}"
