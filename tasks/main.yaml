@@ -102,6 +102,10 @@
 #      args:
 #        chdir: /opt/edc/deployment/instruction/docker
 
+- name: Upload TLS certificates to Vault and configure Keycloak
+  include_tasks: upload_cert.yaml
+  when: sage_tls_cert is defined and sage_tls_cert
+
 - name: Read .env file
   slurp: src=/opt/edc/deployment/instruction/docker/.env
   register: slurpfile
