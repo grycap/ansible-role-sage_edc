@@ -3,14 +3,22 @@
     content: "{{ sage_tls_cert }}"
     dest: /opt/edc/deployment/instruction/docker/keys/sage.p12
     mode: '0600'
-  when: not sage_tls_cert | regex_search('^ott://')
+  when: (sage_tls_cert | regex_search('^ott://')) is none
+
+- name: Check whether the downloaded TLS certificate already exists
+  ansible.builtin.stat:
+    path: /opt/edc/deployment/instruction/docker/keys/sage.p12
+  register: sage_tls_cert_file
+  when: (sage_tls_cert | regex_search('^ott://')) is not none
 
 - name: Download TLS certificate from URL
-  get_url:
+  ansible.builtin.get_url:
     url: "{{ sage_tls_cert | regex_replace('^ott://', 'https://') }}"
     dest: /opt/edc/deployment/instruction/docker/keys/sage.p12
     mode: '0600'
-  when: sage_tls_cert | regex_search('^ott://')
+  when:
+    - (sage_tls_cert | regex_search('^ott://')) is not none
+    - not sage_tls_cert_file.stat.exists
 
 - when:
     - "'identity' in compose_profiles_list"
@@ -57,8 +65,12 @@
       no_log: true
 
     - name: Upload TLS certificates to Vault
-      command:
-        shell: /opt/edc/bin/key-tools/upload_private_key_to_vault.py --combined-file /opt/edc/bin/key-tools/combined.pem --mount-point secret && touch /opt/edc/deployment/instruction/docker/.tls_cert_uploaded
+      shell:
+        chdir: /opt/edc/bin/key-tools
+        cmd: >
+          pip install --break-system-packages -r requirements.txt &&
+          ./upload_private_key_to_vault.py --combined-file combined.pem --mount-point secret &&
+          touch /opt/edc/deployment/instruction/docker/.tls_cert_uploaded
         creates: /opt/edc/deployment/instruction/docker/.tls_cert_uploaded
       environment:
         VAULT_TOKEN: "{{ vault_token }}"
