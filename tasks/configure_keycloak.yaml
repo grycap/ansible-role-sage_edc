@@ -1,0 +1,130 @@
+- name: Read the key alias from the PKCS12 keystore
+  command:
+    argv:
+      - openssl
+      - pkcs12
+      - -in
+      - /opt/edc/deployment/instruction/docker/keys/sage.p12
+      - -clcerts
+      - -nokeys
+      - -passin
+      - "pass:{{ sage_tls_cert_password }}"
+  register: sage_pkcs12_info
+  changed_when: false
+  no_log: true
+
+- name: Save the PKCS12 key alias
+  set_fact:
+    sage_pkcs12_key_alias: >-
+      {{
+        sage_pkcs12_info.stdout
+        | regex_findall('(?m)^\s*friendlyName:\s*(.+?)\s*$')
+        | first
+        | default('')
+      }}
+  no_log: true
+
+- name: Validate the PKCS12 key alias
+  assert:
+    that:
+      - sage_pkcs12_key_alias | length > 0
+    fail_msg: >-
+      No friendlyName was found in sage.p12; Keycloak requires the alias of
+      the private-key entry.
+
+- name: Get Keycloak access token
+  uri:
+    url: "{{ keycloak_address }}/realms/master/protocol/openid-connect/token"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      grant_type: password
+      client_id: admin-cli
+      username: admin
+      password: "{{ lookup('ansible.builtin.password', '/opt/edc/deployment/instruction/docker/.secrets/KEYCLOAK_ADMIN_PASSWORD length=32') }}"
+    return_content: true
+    status_code: 200
+    validate_certs: true
+  register: keycloak_token_response
+  no_log: true
+  changed_when: false
+
+- name: Save access token
+  set_fact:
+    keycloak_access_token: "{{ keycloak_token_response.json.access_token }}"
+  no_log: true
+
+- name: Get information about the target realm
+  uri:
+    url: "{{ keycloak_address }}/admin/realms/{{ realm_name }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ keycloak_access_token }}"
+      Accept: "application/json"
+    return_content: true
+    status_code: 200
+    validate_certs: true
+  register: keycloak_realm_response
+  no_log: true
+  changed_when: false
+
+- name: Save realm ID
+  set_fact:
+    keycloak_realm_id: "{{ keycloak_realm_response.json.id }}"
+
+- name: Get existing key providers for the realm
+  uri:
+    url: "{{ keycloak_address }}/admin/realms/{{ realm_name }}/components?parent={{ keycloak_realm_id }}&type=org.keycloak.keys.KeyProvider"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ keycloak_access_token }}"
+      Accept: "application/json"
+    return_content: true
+    status_code: 200
+  register: key_providers
+  changed_when: false
+
+- name: Save existing key provider names
+  set_fact:
+    existing_key_provider_names: >-
+      {{
+        key_providers.json
+        | map(attribute='name')
+        | list
+      }}
+  changed_when: false
+
+- name: Create missing key provider components for the realm
+  uri:
+    url: "{{ keycloak_address }}/admin/realms/{{ realm_name }}/components"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ keycloak_access_token }}"
+    body_format: json
+    body:
+      name: "{{ item.name }}"
+      parentId: "{{ keycloak_realm_id }}"
+      providerId: java-keystore
+      providerType: org.keycloak.keys.KeyProvider
+      config:
+        priority: ["0"]
+        enabled: ["true"]
+        active: ["true"]
+        algorithm: ["{{ item.algorithm }}"]
+        keystore: ["/opt/keycloak-keys/sage/sage.p12"]
+        keystorePassword: ["{{ sage_tls_cert_password }}"]
+        keystoreType: ["PKCS12"]
+        keyAlias: ["{{ sage_pkcs12_key_alias }}"]
+        keyPassword: ["{{ sage_tls_cert_password }}"]
+        keyUse: ["{{ item.key_use }}"]
+    status_code: 201
+  loop:
+    - name: "{{ sage_pkcs12_key_alias }}-rs256-sig"
+      algorithm: RS256
+      key_use: sig
+    - name: "{{ sage_pkcs12_key_alias }}-rsa-oaep-enc"
+      algorithm: RSA-OAEP
+      key_use: enc
+  when: item.name not in existing_key_provider_names
+  no_log: true
+  changed_when: true
