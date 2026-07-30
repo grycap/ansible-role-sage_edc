@@ -84,80 +84,47 @@
   register: key_providers
   changed_when: false
 
-- name: Find java-keystore key provider for the realm
+- name: Save existing key provider names
   set_fact:
-    existing_key_provider: >-
+    existing_key_provider_names: >-
       {{
         key_providers.json
-        | selectattr('name', 'equalto', '{{ sage_pkcs12_key_alias }}-rs256-sig')
-        | first
-        | default({})
+        | map(attribute='name')
+        | list
       }}
   changed_when: false
 
-- when: existing_key_provider | length == 0
-  block:
-
-    - name: Build key provider RSA component data
-      set_fact:
-        key_provider_component:
-          name: "{{ sage_pkcs12_key_alias }}-rs256-sig"
-          parentId: "{{ keycloak_realm_id }}"
-          providerId: "java-keystore"
-          providerType: "org.keycloak.keys.KeyProvider"
-          config:
-            priority: ["0"]
-            enabled: ["true"]
-            active: ["true"]
-            algorithm: ["RS256"]
-            keystore: ["/opt/keycloak-keys/sage/sage.p12"]
-            keystorePassword: ["{{ sage_tls_cert_password }}"]
-            keystoreType: ["PKCS12"]
-            keyAlias: ["{{ sage_pkcs12_key_alias }}"]
-            keyPassword: ["{{ sage_tls_cert_password }}"]
-            keyUse: ["sig"]
-      no_log: true
-
-    - name: Create RSA key provider component for the realm
-      uri:
-        url: "{{ keycloak_address }}/admin/realms/{{ realm_name }}/components"
-        method: POST
-        headers:
-          Authorization: "Bearer {{ keycloak_access_token }}"
-          Content-Type: "application/json"
-        body: "{{ key_provider_component | to_json }}"
-        status_code: 201
-      no_log: true
-      changed_when: true
-
-    - name: Build key provider RSA-OAEP component data
-      set_fact:
-        key_provider_component:
-          name: "{{ sage_pkcs12_key_alias }}-rsa-oaep-enc"
-          parentId: "{{ keycloak_realm_id }}"
-          providerId: "java-keystore"
-          providerType: "org.keycloak.keys.KeyProvider"
-          config:
-            priority: ["0"]
-            enabled: ["true"]
-            active: ["true"]
-            algorithm: ["RSA-OAEP"]
-            keystore: ["/opt/keycloak-keys/sage/sage.p12"]
-            keystorePassword: ["{{ sage_tls_cert_password }}"]
-            keystoreType: ["PKCS12"]
-            keyAlias: ["{{ sage_pkcs12_key_alias }}"]
-            keyPassword: ["{{ sage_tls_cert_password }}"]
-            keyUse: ["enc"]
-      no_log: true
-
-    - name: Create RSA-OAEP key provider component for the realm
-      uri:
-        url: "{{ keycloak_address }}/admin/realms/{{ realm_name }}/components"
-        method: POST
-        headers:
-          Authorization: "Bearer {{ keycloak_access_token }}"
-          Content-Type: "application/json"
-        body: "{{ key_provider_component | to_json }}"
-        status_code: 201
-      no_log: true
-      changed_when: true
+- name: Create missing key provider components for the realm
+  uri:
+    url: "{{ keycloak_address }}/admin/realms/{{ realm_name }}/components"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ keycloak_access_token }}"
+    body_format: json
+    body:
+      name: "{{ item.name }}"
+      parentId: "{{ keycloak_realm_id }}"
+      providerId: java-keystore
+      providerType: org.keycloak.keys.KeyProvider
+      config:
+        priority: ["0"]
+        enabled: ["true"]
+        active: ["true"]
+        algorithm: ["{{ item.algorithm }}"]
+        keystore: ["/opt/keycloak-keys/sage/sage.p12"]
+        keystorePassword: ["{{ sage_tls_cert_password }}"]
+        keystoreType: ["PKCS12"]
+        keyAlias: ["{{ sage_pkcs12_key_alias }}"]
+        keyPassword: ["{{ sage_tls_cert_password }}"]
+        keyUse: ["{{ item.key_use }}"]
+    status_code: 201
+  loop:
+    - name: "{{ sage_pkcs12_key_alias }}-rs256-sig"
+      algorithm: RS256
+      key_use: sig
+    - name: "{{ sage_pkcs12_key_alias }}-rsa-oaep-enc"
+      algorithm: RSA-OAEP
+      key_use: enc
+  when: item.name not in existing_key_provider_names
+  no_log: true
+  changed_when: true
