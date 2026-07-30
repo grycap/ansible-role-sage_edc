@@ -1,3 +1,37 @@
+- name: Read the key alias from the PKCS12 keystore
+  command:
+    argv:
+      - openssl
+      - pkcs12
+      - -in
+      - /opt/edc/deployment/instruction/docker/keys/sage.p12
+      - -clcerts
+      - -nokeys
+      - -passin
+      - "pass:{{ sage_tls_cert_password }}"
+  register: sage_pkcs12_info
+  changed_when: false
+  no_log: true
+
+- name: Save the PKCS12 key alias
+  set_fact:
+    sage_pkcs12_key_alias: >-
+      {{
+        sage_pkcs12_info.stdout
+        | regex_findall('(?m)^\s*friendlyName:\s*(.+?)\s*$')
+        | first
+        | default('')
+      }}
+  no_log: true
+
+- name: Validate the PKCS12 key alias
+  assert:
+    that:
+      - sage_pkcs12_key_alias | length > 0
+    fail_msg: >-
+      No friendlyName was found in sage.p12; Keycloak requires the alias of
+      the private-key entry.
+
 - name: Get Keycloak access token
   uri:
     url: "{{ keycloak_address }}/realms/master/protocol/openid-connect/token"
@@ -55,7 +89,7 @@
     existing_key_provider: >-
       {{
         key_providers.json
-        | selectattr('name', 'equalto', 'sage-initial-rs256-sig')
+        | selectattr('name', 'equalto', '{{ sage_pkcs12_key_alias }}-rs256-sig')
         | first
         | default({})
       }}
@@ -64,41 +98,7 @@
 - when: existing_key_provider | length == 0
   block:
 
-    - name: Read the key alias from the PKCS12 keystore
-      command:
-        argv:
-          - openssl
-          - pkcs12
-          - -in
-          - /opt/edc/deployment/instruction/docker/keys/sage.p12
-          - -clcerts
-          - -nokeys
-          - -passin
-          - "pass:{{ sage_tls_cert_password }}"
-      register: sage_pkcs12_info
-      changed_when: false
-      no_log: true
-
-    - name: Save the PKCS12 key alias
-      set_fact:
-        sage_pkcs12_key_alias: >-
-          {{
-            sage_pkcs12_info.stdout
-            | regex_findall('(?m)^\s*friendlyName:\s*(.+?)\s*$')
-            | first
-            | default('')
-          }}
-      no_log: true
-
-    - name: Validate the PKCS12 key alias
-      assert:
-        that:
-          - sage_pkcs12_key_alias | length > 0
-        fail_msg: >-
-          No friendlyName was found in sage.p12; Keycloak requires the alias of
-          the private-key entry.
-
-    - name: Build key provider component data
+    - name: Build key provider RSA component data
       set_fact:
         key_provider_component:
           name: "{{ sage_pkcs12_key_alias }}-rs256-sig"
@@ -118,7 +118,39 @@
             keyUse: ["sig"]
       no_log: true
 
-    - name: Create key provider component for the realm
+    - name: Create RSA key provider component for the realm
+      uri:
+        url: "{{ keycloak_address }}/admin/realms/{{ realm_name }}/components"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ keycloak_access_token }}"
+          Content-Type: "application/json"
+        body: "{{ key_provider_component | to_json }}"
+        status_code: 201
+      no_log: true
+      changed_when: true
+
+    - name: Build key provider RSA-OAEP component data
+      set_fact:
+        key_provider_component:
+          name: "{{ sage_pkcs12_key_alias }}-rsa-oaep-enc"
+          parentId: "{{ keycloak_realm_id }}"
+          providerId: "java-keystore"
+          providerType: "org.keycloak.keys.KeyProvider"
+          config:
+            priority: ["0"]
+            enabled: ["true"]
+            active: ["true"]
+            algorithm: ["RSA-OAEP"]
+            keystore: ["/opt/keycloak-keys/sage/sage.p12"]
+            keystorePassword: ["{{ sage_tls_cert_password }}"]
+            keystoreType: ["PKCS12"]
+            keyAlias: ["{{ sage_pkcs12_key_alias }}"]
+            keyPassword: ["{{ sage_tls_cert_password }}"]
+            keyUse: ["enc"]
+      no_log: true
+
+    - name: Create RSA-OAEP key provider component for the realm
       uri:
         url: "{{ keycloak_address }}/admin/realms/{{ realm_name }}/components"
         method: POST
