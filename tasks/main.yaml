@@ -2,6 +2,12 @@
 
 - include_tasks: install.yaml
 
+- name: Get PKCS12 key
+  include_tasks: create_pkcs12.yaml
+  when:
+    - "sage_tls_cert is defined and sage_tls_cert != ''"
+    - "sage_tls_cert_password is defined and sage_tls_cert_password != ''"
+
 - include_tasks: generate_env.yaml
 
 - include_tasks: custom_identity.yaml
@@ -104,14 +110,10 @@
 
 - name: Upload TLS certificates to Vault
   include_tasks: upload_cert.yaml
-  when: sage_tls_cert is defined and sage_tls_cert != ''
-
-- name: Configure Keycloak
-  include_tasks: configure_keycloak.yaml
   when:
+    - "'identity' in compose_profiles_list"
     - "sage_tls_cert is defined and sage_tls_cert != ''"
     - "sage_tls_cert_password is defined and sage_tls_cert_password != ''"
-    - "'keycloak' in compose_profiles_list"
 
 - name: Read .env file
   slurp: src=/opt/edc/deployment/instruction/docker/.env

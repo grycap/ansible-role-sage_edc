@@ -3,22 +3,10 @@
     src: init.sh
     dest: /opt/edc/deployment/instruction/docker/init.sh
 
-- name: Create realms directory
-  file:
-    path: /opt/edc/deployment/instruction/docker/realms
-    state: directory
-    mode: '0755'
-
-- name: Copy realm.json file to the docker directory
-  copy:
-    src: realm.json
+- name: Create realm.json file to the docker directory
+  template:
+    src: realm.json.j2
     dest: /opt/edc/deployment/instruction/docker/realms/realm.json
-
-- name: Create keys directory
-  file:
-    path: /opt/edc/deployment/instruction/docker/keys
-    state: directory
-    mode: '0755'
 
 - name: Create CA file
   copy:
