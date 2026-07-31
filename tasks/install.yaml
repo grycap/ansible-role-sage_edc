@@ -28,6 +28,7 @@
     repo: 'https://gitlab.pcss.pl/daisd-public/dpi-pipelines/psnc-edc-mvds/psnc-edc-mvds'
     dest: /opt/edc/
     version: "{{ branch }}"
+    recursive: false
   when: not env_file_stat.stat.exists
 
 - name: Fix permissions for some scripts
