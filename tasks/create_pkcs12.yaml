@@ -44,7 +44,6 @@
         | first
         | default('')
       }}
-  no_log: true
 
 - name: Validate the PKCS12 key alias
   assert:
@@ -52,4 +51,5 @@
       - sage_pkcs12_key_alias | length > 0
     fail_msg: >-
       No friendlyName was found in sage.p12; Keycloak requires the alias of
-      the private-key entry.
+      the private-key entry. Check if password is correct and the PKCS12 file
+      contains a private key entry with a friendlyName.
