@@ -53,3 +53,15 @@
   loop:
     - scripts/render/render-dashboard.sh
     - config/templates/connector.properties.template
+
+- name: Create realms directory
+  file:
+    path: /opt/edc/deployment/instruction/docker/realms
+    state: directory
+    mode: '0755'
+
+- name: Create keys directory
+  file:
+    path: /opt/edc/deployment/instruction/docker/keys
+    state: directory
+    mode: '0755'

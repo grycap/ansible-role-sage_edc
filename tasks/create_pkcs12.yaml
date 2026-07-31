@@ -1,0 +1,55 @@
+- name: Copy TLS certificate to /opt/edc/deployment/instruction/docker/keys/sage.p12
+  copy:
+    content: "{{ sage_tls_cert }}"
+    dest: /opt/edc/deployment/instruction/docker/keys/sage.p12
+    mode: '0600'
+  when: (sage_tls_cert | regex_search('^ott://')) is none
+
+- name: Check whether the downloaded TLS certificate already exists
+  ansible.builtin.stat:
+    path: /opt/edc/deployment/instruction/docker/keys/sage.p12
+  register: sage_tls_cert_file
+  when: (sage_tls_cert | regex_search('^ott://')) is not none
+
+- name: Download TLS certificate from URL
+  ansible.builtin.get_url:
+    url: "{{ sage_tls_cert | regex_replace('^ott://', 'https://') }}"
+    dest: /opt/edc/deployment/instruction/docker/keys/sage.p12
+    mode: '0600'
+  when:
+    - (sage_tls_cert | regex_search('^ott://')) is not none
+    - not sage_tls_cert_file.stat.exists
+
+- name: Read the key alias from the PKCS12 keystore
+  command:
+    argv:
+      - openssl
+      - pkcs12
+      - -in
+      - /opt/edc/deployment/instruction/docker/keys/sage.p12
+      - -clcerts
+      - -nokeys
+      - -passin
+      - "pass:{{ sage_tls_cert_password }}"
+  register: sage_pkcs12_info
+  changed_when: false
+  no_log: true
+
+- name: Save the PKCS12 key alias
+  set_fact:
+    sage_pkcs12_key_alias: >-
+      {{
+        sage_pkcs12_info.stdout
+        | regex_findall('(?m)^\s*friendlyName:\s*(.+?)\s*$')
+        | first
+        | default('')
+      }}
+  no_log: true
+
+- name: Validate the PKCS12 key alias
+  assert:
+    that:
+      - sage_pkcs12_key_alias | length > 0
+    fail_msg: >-
+      No friendlyName was found in sage.p12; Keycloak requires the alias of
+      the private-key entry.
