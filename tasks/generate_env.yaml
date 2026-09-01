@@ -61,7 +61,7 @@
     - { env_key: 'ISHARE_VAULT_KEY_SECRET', value: 'ishare-private-key' }
     - { env_key: 'ISHARE_VAULT_CERT_SECRET', value: 'ishare-certificate-chain' }
     - { env_key: 'ISHARE_GUARD_ALLOWED_IDS', value: '"did:web:federated-catalog-identity-hub-sage-data-space.apps.bst2.paas.psnc.pl:authority"' }
-    - { env_key: 'ISHARE_PR_ISS', value: '{{ ishare_pr_iss }}' }
+    - { env_key: 'ISHARE_PR_ISS', value: '{{ ishare_client_id }}' }
 
 - name: Update ISHARE_CLIENT_ID in .env
   lineinfile:
