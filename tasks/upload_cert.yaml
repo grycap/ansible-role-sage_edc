@@ -9,12 +9,6 @@
     requirements: /opt/edc/bin/key-tools/requirements.txt
     extra_args: --break-system-packages
 
-- name: Read Vault secrets file
-  slurp:
-    src: /opt/edc/deployment/instruction/docker/.env.secrets
-  register: vault_secrets_file
-  no_log: true
-
 - name: Extract Vault token
   set_fact:
     vault_token: >-

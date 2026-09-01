@@ -108,12 +108,39 @@
 #      args:
 #        chdir: /opt/edc/deployment/instruction/docker
 
+- name: Read Vault secrets file
+  slurp:
+    src: /opt/edc/deployment/instruction/docker/.env.secrets
+  register: vault_secrets_file
+  no_log: true
+
 - name: Upload TLS certificates to Vault
   include_tasks: upload_cert.yaml
   when:
     - "'identity' in compose_profiles_list"
     - "sage_tls_cert is defined and sage_tls_cert != ''"
     - "sage_tls_cert_password is defined and sage_tls_cert_password != ''"
+
+- name: Extract Vault service token
+  set_fact:
+    vault_service_token: >-
+      {{
+        (
+          vault_secrets_file.content
+          | b64decode
+          | regex_findall('(?m)^VAULT_SERVICE_TOKEN=(.*)$')
+          | first
+        )
+        | default('', true)
+        | trim
+      }}
+  no_log: true
+
+- name: Add VAULT_SERVICE_TOKEN to .env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/.env
+    regexp: '^VAULT_SERVICE_TOKEN='
+    line: "VAULT_SERVICE_TOKEN={{ vault_service_token }}"
 
 - name: Read .env file
   slurp: src=/opt/edc/deployment/instruction/docker/.env
