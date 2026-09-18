@@ -36,6 +36,8 @@
           command:
             - start
             - --import-realm
+            - --spi-keys--java-keystore--keystores-path
+            - /opt/keycloak-keys
           environment:
             KC_DB_URL: jdbc:postgresql://keycloak-db:5432/${KEYCLOAK_DB_NAME}
             KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
