@@ -4,10 +4,11 @@
   args:
     creates: /opt/edc/bin/key-tools/combined.pem
 
-- name: Install pip required packages for upload_private_key_to_vault.py
-  pip:
-    requirements: /opt/edc/bin/key-tools/requirements.txt
-    extra_args: --break-system-packages
+- name: Read Vault secrets file
+  slurp:
+    src: /opt/edc/deployment/instruction/docker/.env.secrets
+  register: vault_secrets_file
+  no_log: true
 
 - name: Extract Vault token
   set_fact:
@@ -31,12 +32,17 @@
     fail_msg: VAULT_ROOT_TOKEN is missing or empty in .env.secrets
   no_log: true
 
+- name: Install pip required packages for upload_private_key_to_vault.py
+  pip:
+    requirements: /opt/edc/bin/key-tools/requirements.txt
+    virtualenv: /opt/edc/deployment/instruction/docker/venv
+
 - name: Upload TLS certificates to Vault
   shell:
     chdir: /opt/edc/bin/key-tools
     cmd: >
-      pip install --break-system-packages -r requirements.txt &&
-      ./upload_private_key_to_vault.py --combined-file combined.pem --mount-point secret &&
+      /opt/edc/deployment/instruction/docker/venv/bin/python3
+      /opt/edc/bin/key-tools/upload_private_key_to_vault.py --combined-file combined.pem --mount-point secret &&
       touch /opt/edc/deployment/instruction/docker/.tls_cert_uploaded
     creates: /opt/edc/deployment/instruction/docker/.tls_cert_uploaded
   environment:
