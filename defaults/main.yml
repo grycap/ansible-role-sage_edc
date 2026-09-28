@@ -8,5 +8,8 @@ password_env_vars:
   - IDENTITY_HUB_DB_PASSWORD
   - STORAGE_SECRET_KEY
   - CONNECTOR_STS_CLIENT_SECRET_ALIAS
+  - CATALOG_CLIENT_SECRET
+  - CONNECTOR_CLIENT_SECRET
+  - CONNECTOR_API_KEY
 use_custom_identity_provider_image: false
 realm_name: 'sage'
