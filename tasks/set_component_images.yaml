@@ -1,0 +1,26 @@
+- name: Read docker-compose.yml
+  slurp:
+    src: /opt/edc/deployment/instruction/docker/docker-compose.yaml
+  register: docker_compose_file
+
+- name: Parse docker-compose.yml
+  set_fact:
+    docker_compose_content: "{{ docker_compose_file.content | b64decode | from_yaml }}"
+
+- name: Build component images docker-compose patch
+  set_fact:
+    compose_patch:
+      services:
+        connector:
+          image: "registry.egi.eu/sage.greendealdata.eu/psnc-connector:latest"
+        dashboard:
+          image: "registry.egi.eu/sage.greendealdata.eu/psnc-data-dashboard:latest"
+        identity-hub:
+          image: "registry.egi.eu/sage.greendealdata.eu/psnc-identity-hub:latest"
+        consumer-backend:
+          image: "registry.egi.eu/sage.greendealdata.eu/psnc-consumer-backend:latest"
+
+- name: Apply update component images docker-compose patch
+  copy:
+    dest: /opt/edc/deployment/instruction/docker/docker-compose.yaml
+    content: "{{ docker_compose_content | combine(compose_patch, recursive=true) | to_nice_yaml(indent=2, sort_keys=false) }}"

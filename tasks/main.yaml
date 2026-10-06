@@ -10,6 +10,8 @@
 
 - include_tasks: generate_env.yaml
 
+- include_tasks: set_component_images.yaml
+
 - include_tasks: custom_identity.yaml
   when:
     - "'keycloak' in compose_profiles_list"
