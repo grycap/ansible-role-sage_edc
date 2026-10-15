@@ -52,31 +52,17 @@
     chdir: /opt/edc/deployment/instruction/docker
   when: ishare_client_id_lineinfile is changed
 
-- name: Set extra_args var
-  set_fact:
-    extra_args: ''
-
-- name: Set extra_args var in py3.11
-  set_fact:
-    extra_args: --break-system-packages
-  when: ansible_python_version is version('3.11', '>=')
-
-- name: Install pip required packages
-  pip:
-    name:
-      - virtualenv
-    executable: pip3
-    extra_args: "{{ extra_args }}"
-
 - name: Create virtualenv
   command:
-    cmd: python -m virtualenv /opt/edc/deployment/instruction/docker/venv
+    cmd: >-
+      {{ 'python3 -m venv' if ansible_os_family == 'Debian'
+         else 'python3 -m virtualenv' }}
+      /opt/edc/deployment/instruction/docker/venv
     creates: /opt/edc/deployment/instruction/docker/venv
 
 - name: Install python dependencies
   pip:
     requirements: /opt/edc/deployment/instruction/docker/scripts/keycloak/requirements.txt
-    extra_args: "{{ extra_args }}"
     virtualenv: /opt/edc/deployment/instruction/docker/venv
 
 - name: Wait for Keycloak endpoint to be active
