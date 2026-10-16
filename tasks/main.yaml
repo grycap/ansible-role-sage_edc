@@ -52,19 +52,6 @@
     chdir: /opt/edc/deployment/instruction/docker
   when: ishare_client_id_lineinfile is changed
 
-- name: Create virtualenv
-  command:
-    cmd: >-
-      {{ 'python3 -m venv' if ansible_os_family == 'Debian'
-         else 'python3 -m virtualenv' }}
-      /opt/edc/deployment/instruction/docker/venv
-    creates: /opt/edc/deployment/instruction/docker/venv
-
-- name: Install python dependencies
-  pip:
-    requirements: /opt/edc/deployment/instruction/docker/scripts/keycloak/requirements.txt
-    virtualenv: /opt/edc/deployment/instruction/docker/venv
-
 - name: Wait for Keycloak endpoint to be active
   uri:
     url: "{{ keycloak_address }}/realms/master/.well-known/openid-configuration"

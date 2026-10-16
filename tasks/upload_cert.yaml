@@ -6,7 +6,7 @@
 
 - name: Read Vault secrets file
   slurp:
-    src: /opt/edc/deployment/instruction/docker/.env.secrets
+    src: /opt/edc/deployment/instruction/docker/secrets/vault.env
   register: vault_secrets_file
   no_log: true
 
