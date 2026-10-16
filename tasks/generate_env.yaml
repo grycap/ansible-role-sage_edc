@@ -10,9 +10,9 @@
     state: directory
     mode: '0777'
 
-- name: Generate passwords in .env
+- name: Generate passwords in secrets/values.env
   lineinfile:
-    path: /opt/edc/deployment/instruction/docker/.env
+    path: /opt/edc/deployment/instruction/docker/secrets/values.env
     regexp: '^{{ item }}='
     line: "{{ item }}={{ lookup('ansible.builtin.password', '/opt/edc/deployment/instruction/docker/.secrets/' ~ item ~ ' length=32') }}"
   loop: "{{ password_env_vars }}"
@@ -43,7 +43,6 @@
     - { env_key: 'CONSUMER_BACKEND_HOST', value: 'consumer-backend.{{ domain_name }}' }
     - { env_key: 'STORAGE_HOST', value: 'storage.{{ domain_name }}' }
     - { env_key: 'DASHBOARD_USER_NAME', value: '{{ dashboard_username | default("test") }}' }
-    - { env_key: 'DASHBOARD_USER_PASS', value: '{{ dashboard_password }}' }
 
 - name: Update ISHARE variables in .env
   lineinfile:
@@ -70,11 +69,17 @@
     line: "ISHARE_CLIENT_ID={{ ishare_client_id }}"
   register: ishare_client_id_lineinfile
 
-- name: Update CATALOG_API_KEY in .env
+- name: Update CATALOG_API_KEY in secrets/values.env
   lineinfile:
-    path: /opt/edc/deployment/instruction/docker/.env
+    path: /opt/edc/deployment/instruction/docker/secrets/values.env
     regexp: '^CATALOG_API_KEY='
     line: "CATALOG_API_KEY={{ catalog_api_key }}"
+
+- name: Update DASHBOARD_USER_PASS in secrets/values.env
+  lineinfile:
+    path: /opt/edc/deployment/instruction/docker/secrets/values.env
+    regexp: '^DASHBOARD_USER_PASS='
+    line: "DASHBOARD_USER_PASS={{ dashboard_password }}"
 
 - name: Update REALM_NAME in .env
   lineinfile:
@@ -94,9 +99,9 @@
   args:
     creates: /opt/edc/deployment/instruction/docker/.secrets/IDENTITY_HUB_SUPERUSER_SECRET
 
-- name: Update IDENTITY_HUB_SUPERUSER_KEY in .env
+- name: Update IDENTITY_HUB_SUPERUSER_KEY in secrets/values.env
   lineinfile:
-    path: /opt/edc/deployment/instruction/docker/.env
+    path: /opt/edc/deployment/instruction/docker/secrets/values.env
     regexp: '^IDENTITY_HUB_SUPERUSER_KEY='
     line: >-
       IDENTITY_HUB_SUPERUSER_KEY={{ (identity_hub_superuser_username | default('super-user') | b64encode) ~ '.' ~ (lookup('ansible.builtin.file', '/opt/edc/deployment/instruction/docker/.secrets/IDENTITY_HUB_SUPERUSER_SECRET') | trim | b64encode) }}
