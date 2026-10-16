@@ -39,7 +39,7 @@
   when: use_custom_identity_provider_image
   loop:
     - scripts/render/render-dashboard.sh
-    - config/templates/connector.properties.template
+    - config/dashboard/app.config.json
 
 - name: Create realms directory
   file:
