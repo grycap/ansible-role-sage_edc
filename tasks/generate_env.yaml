@@ -121,9 +121,9 @@
   changed_when: false
   when: not traefik_pass_file.stat.exists
 
-- name: Update TRAEFIK_BASIC_AUTH in .env
+- name: Update TRAEFIK_BASIC_AUTH in secrets/values.env
   lineinfile:
-    path: /opt/edc/deployment/instruction/docker/.env
+    path: /opt/edc/deployment/instruction/docker/secrets/values.env
     regexp: '^TRAEFIK_BASIC_AUTH='
     line: "TRAEFIK_BASIC_AUTH={{ traefik_basic_auth_cmd.stdout | regex_replace('\\$', '$$') }}"
   when: not traefik_pass_file.stat.exists
