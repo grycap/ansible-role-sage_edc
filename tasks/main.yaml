@@ -91,8 +91,8 @@
     - "sage_tls_cert is defined and sage_tls_cert != ''"
     - "sage_tls_cert_password is defined and sage_tls_cert_password != ''"
 
-- name: Read .env file
-  slurp: src=/opt/edc/deployment/instruction/docker/.env
+- name: Read secrets file
+  slurp: src=/opt/edc/deployment/instruction/docker/secrets/values.env
   register: slurpfile
   ignore_errors: true
 
