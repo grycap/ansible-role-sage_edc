@@ -1,5 +1,5 @@
 - name: make init
-  command: make init
+  command: make init PROFILE=sage
   args:
     chdir: /opt/edc/deployment/instruction/docker
     creates: /opt/edc/deployment/instruction/docker/.env
