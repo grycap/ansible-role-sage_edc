@@ -15,11 +15,6 @@
     - "'keycloak' in compose_profiles_list"
     - use_custom_identity_provider_image
 
-- name: make init
-  command: make init PROFILE=sage
-  args:
-    chdir: /opt/edc/deployment/instruction/docker
-
 - name: make render
   command: make render
   args:
